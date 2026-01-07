@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Logger</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap');
+        
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a24;
+            --bg-hover: #22222e;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent-cyan: #22d3ee;
+            --accent-purple: #a855f7;
+            --accent-green: #22c55e;
+            --accent-orange: #f97316;
+            --accent-red: #ef4444;
+            --border-color: #27272a;
+            --border-subtle: #1f1f26;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(ellipse at top left, rgba(34, 211, 238, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(168, 85, 247, 0.03) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.2rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--text-primary), var(--text-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stats {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .stat {
+            text-align: right;
+        }
+
+        .stat-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            font-family: 'Space Grotesk', sans-serif;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent-cyan);
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .auto-refresh input[type="checkbox"] {
+            accent-color: var(--accent-cyan);
+        }
+
+        /* Domain grouping styles */
+        .domain-group {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .domain-header {
+            display: flex;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 1rem;
+        }
+
+        .domain-header:hover {
+            background: var(--bg-hover);
+        }
+
+        .domain-header.expanded {
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .expand-icon {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            transition: transform 0.2s;
+            width: 1rem;
+        }
+
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+
+        .domain-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-cyan);
+            flex: 1;
+        }
+
+        .domain-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-primary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .domain-content {
+            display: none;
+        }
+
+        .domain-content.visible {
+            display: block;
+        }
+
+        /* Path grouping styles */
+        .path-group {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .path-group:last-child {
+            border-bottom: none;
+        }
+
+        .path-header {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1.25rem 0.75rem 2.5rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            gap: 1rem;
+        }
+
+        .path-header:hover {
+            background: var(--bg-hover);
+        }
+
+        .path-header.expanded {
+            background: var(--bg-tertiary);
+        }
+
+        .path-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .path-count {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .path-content {
+            display: none;
+            background: var(--bg-primary);
+        }
+
+        .path-content.visible {
+            display: block;
+        }
+
+        /* Request styles */
+        .request-item {
+            display: flex;
+            align-items: center;
+            padding: 0.6rem 1.25rem 0.6rem 3.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 1rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .request-item:last-child {
+            border-bottom: none;
+        }
+
+        .request-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .request-item.expanded {
+            background: var(--bg-tertiary);
+        }
+
+        .method {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 0.7rem;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .method-GET { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+        .method-POST { background: rgba(34, 211, 238, 0.15); color: var(--accent-cyan); }
+        .method-PUT { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+        .method-DELETE { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+        .method-PATCH { background: rgba(168, 85, 247, 0.15); color: var(--accent-purple); }
+        .method-OPTIONS { background: rgba(113, 113, 122, 0.15); color: var(--text-muted); }
+        .method-HEAD { background: rgba(113, 113, 122, 0.15); color: var(--text-muted); }
+
+        .request-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 80px;
+        }
+
+        .request-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+        }
+
+        .status-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            padding: 0.1rem 0.4rem;
+            border-radius: 3px;
+        }
+
+        .status-2xx { background: rgba(34, 197, 94, 0.15); color: var(--accent-green); }
+        .status-3xx { background: rgba(34, 211, 238, 0.15); color: var(--accent-cyan); }
+        .status-4xx { background: rgba(249, 115, 22, 0.15); color: var(--accent-orange); }
+        .status-5xx { background: rgba(239, 68, 68, 0.15); color: var(--accent-red); }
+
+        /* Request details */
+        .request-details {
+            display: none;
+            padding: 1.25rem;
+            padding-left: 3.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .request-details.visible {
+            display: block;
+        }
+
+        .details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .details-section h3 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .details-list {
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .detail-item {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.2rem 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+        }
+
+        .detail-key {
+            color: var(--accent-purple);
+            min-width: 120px;
+            flex-shrink: 0;
+        }
+
+        .detail-value {
+            color: var(--text-secondary);
+            word-break: break-all;
+        }
+
+        .pcap-download {
+            margin-top: 0.75rem;
+        }
+
+        .body-section {
+            grid-column: 1 / -1;
+        }
+
+        .body-content {
+            background: var(--bg-primary);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem;
+            max-height: 300px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--text-secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state h2 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">N</div>
+                <h1>Network Logger</h1>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="request-count">0</div>
+                    <div class="stat-label">Requests</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="domain-count">0</div>
+                    <div class="stat-label">Domains</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="toolbar">
+            <button class="btn" onclick="refreshRequests()">Refresh</button>
+            <button class="btn" onclick="collapseAll()">Collapse All</button>
+            <button class="btn" onclick="expandAllDomains()">Expand Domains</button>
+            <div class="auto-refresh">
+                <input type="checkbox" id="auto-refresh" checked>
+                <label for="auto-refresh">Auto-refresh (5s)</label>
+            </div>
+        </div>
+
+        <div id="requests-container">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading requests...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let requests = [];
+        let expandedDomains = new Set();
+        let expandedPaths = new Set();
+        let expandedRequests = new Set();
+
+        async function fetchRequests() {
+            try {
+                const response = await fetch('/api/requests');
+                requests = await response.json();
+                render();
+                updateStats();
+            } catch (error) {
+                console.error('Failed to fetch requests:', error);
+            }
+        }
+
+        function groupByDomain(requests) {
+            const groups = {};
+            for (const req of requests) {
+                if (!groups[req.domain]) {
+                    groups[req.domain] = {};
+                }
+                if (!groups[req.domain][req.path]) {
+                    groups[req.domain][req.path] = [];
+                }
+                groups[req.domain][req.path].push(req);
+            }
+            return groups;
+        }
+
+        function render() {
+            const container = document.getElementById('requests-container');
+            
+            if (requests.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h2>No requests logged yet</h2>
+                        <p>Requests made through the proxy will appear here</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const grouped = groupByDomain(requests);
+            const sortedDomains = Object.keys(grouped).sort();
+            
+            let html = '';
+            for (const domain of sortedDomains) {
+                const paths = grouped[domain];
+                const pathKeys = Object.keys(paths).sort();
+                const totalRequests = pathKeys.reduce((sum, p) => sum + paths[p].length, 0);
+                const isDomainExpanded = expandedDomains.has(domain);
+                
+                html += `
+                    <div class="domain-group">
+                        <div class="domain-header ${isDomainExpanded ? 'expanded' : ''}" onclick="toggleDomain('${escapeHtml(domain)}')">
+                            <span class="expand-icon ${isDomainExpanded ? 'expanded' : ''}">▶</span>
+                            <span class="domain-name">${escapeHtml(domain)}</span>
+                            <span class="domain-count">${totalRequests} request${totalRequests !== 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="domain-content ${isDomainExpanded ? 'visible' : ''}">
+                `;
+                
+                for (const path of pathKeys) {
+                    const pathRequests = paths[path];
+                    const pathKey = `${domain}::${path}`;
+                    const isPathExpanded = expandedPaths.has(pathKey);
+                    
+                    html += `
+                        <div class="path-group">
+                            <div class="path-header ${isPathExpanded ? 'expanded' : ''}" onclick="togglePath('${escapeHtml(pathKey)}')">
+                                <span class="expand-icon ${isPathExpanded ? 'expanded' : ''}">▶</span>
+                                <span class="path-name" title="${escapeHtml(path)}">${escapeHtml(path) || '/'}</span>
+                                <span class="path-count">${pathRequests.length}</span>
+                            </div>
+                            <div class="path-content ${isPathExpanded ? 'visible' : ''}">
+                    `;
+                    
+                    // Sort requests by timestamp descending (newest first)
+                    const sortedRequests = [...pathRequests].sort((a, b) => 
+                        new Date(b.timestamp) - new Date(a.timestamp)
+                    );
+                    
+                    for (const req of sortedRequests) {
+                        const isReqExpanded = expandedRequests.has(req.id);
+                        const time = new Date(req.timestamp).toLocaleTimeString();
+                        
+                        html += `
+                            <div class="request-item ${isReqExpanded ? 'expanded' : ''}" onclick="toggleRequest('${req.id}')">
+                                <span class="method method-${req.method}">${req.method}</span>
+                                <span class="request-time">${time}</span>
+                                ${req.response_status ? `<span class="status-code status-${Math.floor(req.response_status/100)}xx">${req.response_status}</span>` : ''}
+                                <span class="request-id">${req.id}</span>
+                            </div>
+                            <div class="request-details ${isReqExpanded ? 'visible' : ''}" id="details-${req.id}">
+                                <div class="details-grid">
+                                    <div class="details-section">
+                                        <h3>Headers</h3>
+                                        <div class="details-list">
+                                            ${renderHeaders(req.headers)}
+                                        </div>
+                                    </div>
+                                    <div class="details-section">
+                                        <h3>Request Info</h3>
+                                        <div class="details-list">
+                                            <div class="detail-item">
+                                                <span class="detail-key">Full URL</span>
+                                                <span class="detail-value">${escapeHtml(req.domain)}${escapeHtml(req.path)}</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <span class="detail-key">Timestamp</span>
+                                                <span class="detail-value">${new Date(req.timestamp).toISOString()}</span>
+                                            </div>
+                                            <div class="detail-item">
+                                                <span class="detail-key">PCAP File</span>
+                                                <span class="detail-value">${escapeHtml(req.pcap_file)}</span>
+                                            </div>
+                                        </div>
+                                        <div class="pcap-download">
+                                            <a class="btn" href="/api/pcap/${encodeURIComponent(req.pcap_file)}" download onclick="event.stopPropagation()">Download PCAP</a>
+                                        </div>
+                                    </div>
+                                    ${req.body ? `
+                                    <div class="details-section body-section">
+                                        <h3>Request Body</h3>
+                                        <div class="body-content">${formatBody(req.body)}</div>
+                                    </div>
+                                    ` : ''}
+                                    ${req.response_status ? `
+                                    <div class="details-section">
+                                        <h3>Response (${req.response_status})</h3>
+                                        <div class="details-list">
+                                            ${renderHeaders(req.response_headers)}
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                    ${req.response_body ? `
+                                    <div class="details-section body-section">
+                                        <h3>Response Body</h3>
+                                        <div class="body-content">${formatBody(req.response_body)}</div>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, '&amp;')
+                      .replace(/</g, '&lt;')
+                      .replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;')
+                      .replace(/'/g, '&#039;');
+        }
+
+        function renderHeaders(headers) {
+            if (!headers || Object.keys(headers).length === 0) {
+                return '<div class="detail-item"><span class="detail-value">No headers</span></div>';
+            }
+            
+            return Object.entries(headers)
+                .map(([key, value]) => `
+                    <div class="detail-item">
+                        <span class="detail-key">${escapeHtml(key)}</span>
+                        <span class="detail-value">${escapeHtml(value)}</span>
+                    </div>
+                `).join('');
+        }
+
+        function formatBody(body) {
+            if (!body) return '';
+            // Try to parse and pretty-print JSON
+            try {
+                const parsed = JSON.parse(body);
+                return escapeHtml(JSON.stringify(parsed, null, 2));
+            } catch {
+                return escapeHtml(body);
+            }
+        }
+
+        function toggleDomain(domain) {
+            if (expandedDomains.has(domain)) {
+                expandedDomains.delete(domain);
+            } else {
+                expandedDomains.add(domain);
+            }
+            render();
+        }
+
+        function togglePath(pathKey) {
+            event.stopPropagation();
+            if (expandedPaths.has(pathKey)) {
+                expandedPaths.delete(pathKey);
+            } else {
+                expandedPaths.add(pathKey);
+            }
+            render();
+        }
+
+        function toggleRequest(id) {
+            event.stopPropagation();
+            if (expandedRequests.has(id)) {
+                expandedRequests.delete(id);
+            } else {
+                expandedRequests.add(id);
+            }
+            render();
+        }
+
+        function collapseAll() {
+            expandedDomains.clear();
+            expandedPaths.clear();
+            expandedRequests.clear();
+            render();
+        }
+
+        function expandAllDomains() {
+            const grouped = groupByDomain(requests);
+            for (const domain of Object.keys(grouped)) {
+                expandedDomains.add(domain);
+            }
+            render();
+        }
+
+        function updateStats() {
+            document.getElementById('request-count').textContent = requests.length;
+            const domains = new Set(requests.map(r => r.domain));
+            document.getElementById('domain-count').textContent = domains.size;
+        }
+
+        function refreshRequests() {
+            fetchRequests();
+        }
+
+        // Initial load
+        fetchRequests();
+
+        // Auto-refresh
+        setInterval(() => {
+            if (document.getElementById('auto-refresh').checked) {
+                fetchRequests();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+# Runtime directories
+logs/
+output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

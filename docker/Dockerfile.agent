@@ -1,0 +1,35 @@
+# Untrusted Coding Agent Container
+# This container is treated as potentially malicious
+# It has minimal tools and no access to logging infrastructure
+
+FROM node:24-bookworm-slim
+
+# Install only what's absolutely necessary
+# ca-certificates for system CA trust store updates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Claude Code globally
+RUN npm install -g @anthropic-ai/claude-code
+
+# Create agent user with same UID as node user (1000) for host compatibility
+RUN useradd -m -s /bin/bash -u 1000 -o agent
+
+# Create workspace directory owned by agent user
+RUN mkdir -p /workspace && chown agent:agent /workspace
+
+# Copy entrypoint script (runs as root initially to fix permissions)
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Set proxy environment variables (will be overridden by docker-compose)
+ENV HTTP_PROXY=""
+ENV HTTPS_PROXY=""
+ENV NODE_EXTRA_CA_CERTS=""
+
+# Start as root, entrypoint will switch to agent user
+WORKDIR /workspace
+
+ENTRYPOINT ["/entrypoint.sh"]

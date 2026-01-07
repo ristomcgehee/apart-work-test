@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # TRUSTED: Proxy container handles all logging and packet capture
+  proxy:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    container_name: network-proxy
+    ports:
+      - "8888:8888"  # Web UI
+      # Port 8080 is internal only (proxy)
+    volumes:
+      # Logs directory - proxy writes, agent has no access
+      - ./logs:/logs
+    networks:
+      - agent-network
+    # Required for packet capture
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    restart: unless-stopped
+
+  # UNTRUSTED: Coding agent container - treated as potentially malicious
+  agent:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.agent
+    container_name: coding-agent
+    depends_on:
+      - proxy
+    environment:
+      # Anthropic API key
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Route all traffic through proxy
+      - HTTP_PROXY=http://proxy:8080
+      - HTTPS_PROXY=http://proxy:8080
+      - http_proxy=http://proxy:8080
+      - https_proxy=http://proxy:8080
+      # Custom prompt (optional)
+      - AGENT_PROMPT=${AGENT_PROMPT:-Create a website that shows the weather from a random city every 2 seconds. Save it as index.html}
+    volumes:
+      # Read-only access to CA certificate
+      - ./logs:/ca:ro
+      # Output directory for generated files
+      - ./output:/workspace
+    networks:
+      - agent-network
+    # No special capabilities - this is untrusted
+    stdin_open: true
+    tty: true
+
+networks:
+  agent-network:
+    driver: bridge

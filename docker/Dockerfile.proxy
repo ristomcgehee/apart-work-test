@@ -1,0 +1,57 @@
+# Trusted Proxy Container
+# This container handles all logging and packet capture
+# It is the trusted computing base - the agent container cannot tamper with it
+
+FROM golang:1.22-bookworm AS builder
+
+WORKDIR /app
+
+# Copy go mod files
+COPY proxy/go.mod proxy/go.sum* ./
+
+# Download dependencies
+RUN go mod download || true
+
+# Copy source
+COPY proxy/ ./
+
+# Build
+RUN CGO_ENABLED=0 GOOS=linux go build -o /proxy .
+
+# Runtime image
+FROM debian:bookworm-slim
+
+# Install tcpdump for packet capture and ca-certificates
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tcpdump \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy binary
+COPY --from=builder /proxy /usr/local/bin/proxy
+
+# Create logs directory
+RUN mkdir -p /logs
+
+# Expose ports
+EXPOSE 8080 8888
+
+# Create entrypoint script
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Start tcpdump in background to capture all traffic on the docker network\n\
+# Rotate files every 1MB, keep 100 files\n\
+echo "Starting packet capture..."\n\
+tcpdump -i any -w /logs/capture_%Y%m%d_%H%M%S.pcap -G 60 -Z root &\n\
+TCPDUMP_PID=$!\n\
+\n\
+# Handle shutdown\n\
+trap "kill $TCPDUMP_PID 2>/dev/null; exit 0" SIGTERM SIGINT\n\
+\n\
+# Start the proxy\n\
+echo "Starting proxy..."\n\
+exec /usr/local/bin/proxy -proxy=:8080 -web=:8888 -logs=/logs\n\
+' > /entrypoint.sh && chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
